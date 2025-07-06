@@ -46,29 +46,36 @@
             cursor: pointer;
         }
 
-        /* orientation colours */
+        /* orientation colours - completely different colors for different directions
+           LEFT-TO-RIGHT: Green (#a0d468)
+           RIGHT-TO-LEFT: Yellow (#ffce54)
+           TOP-TO-BOTTOM: Blue (#4fc1e9)
+           BOTTOM-TO-TOP: Purple (#ac92ec)
+           STANDARD DIAGONAL: Red (#ed5565)
+           REVERSE DIAGONAL: Orange (#fc6e51)
+        */
         .horiz {
-            background: #a0d468;
+            background: #a0d468; /* Green for left-to-right */
         }
 
         .horiz-rtl {
-            background: #8cc152;
+            background: #ffce54; /* Yellow for right-to-left */
         }
 
         .vert {
-            background: #4fc1e9;
+            background: #4fc1e9; /* Blue for top-to-bottom */
         }
 
         .vert-rtl {
-            background: #3bafda;
+            background: #ac92ec; /* Purple for bottom-to-top */
         }
 
         .diag {
-            background: #ed5565;
+            background: #ed5565; /* Red for standard diagonal */
         }
 
         .diag-rtl {
-            background: #da4453;
+            background: #fc6e51; /* Orange for reverse diagonal */
         }
 
         .temp {
@@ -173,9 +180,14 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
         }
         // For diagonal selections
         else {
-            // If either right-to-left or bottom-to-top (but not both), use rtl class
-            // This ensures diagonal selections have consistent highlighting based on direction
-            return (isRightToLeft || isBottomToTop) && !(isRightToLeft && isBottomToTop) ? 'diag-rtl' : 'diag';
+            // For diagonal selections, we need to handle the four possible directions:
+            // ↘ (dr=1, dc=1): down-right - standard diagonal
+            // ↖ (dr=-1, dc=-1): up-left - standard diagonal (reverse of down-right)
+            // ↙ (dr=1, dc=-1): down-left - rtl diagonal
+            // ↗ (dr=-1, dc=1): up-right - rtl diagonal (reverse of down-left)
+
+            // Use rtl class for down-left and up-right diagonals
+            return (isRightToLeft !== isBottomToTop) ? 'diag-rtl' : 'diag';
         }
     }
 
