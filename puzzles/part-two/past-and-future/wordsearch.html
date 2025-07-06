@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Interactive Word Search Builder</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 1rem;
+            max-width: 1000px;
+            margin: auto;
+        }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            margin-bottom: 1rem;
+            font-family: monospace;
+        }
+
+        button {
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-right: .5rem;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            margin-top: 1rem;
+        }
+
+        /* grid cells */
+        table.grid {
+            border-collapse: collapse;
+            user-select: none;
+        }
+
+        table.grid td {
+            border: 1px solid #ccc;
+            width: 30px;
+            height: 30px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        /* orientation colours */
+        .horiz {
+            background: #a0d468;
+        }
+
+        .horiz-rtl {
+            background: #8cc152;
+        }
+
+        .vert {
+            background: #4fc1e9;
+        }
+
+        .vert-rtl {
+            background: #3bafda;
+        }
+
+        .diag {
+            background: #ed5565;
+        }
+
+        .diag-rtl {
+            background: #da4453;
+        }
+
+        .temp {
+            background: #b6e3ff;
+        }
+
+        /* results */
+        #resultsTable {
+            margin-top: 1rem;
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        #resultsTable th, #resultsTable td {
+            border: 1px solid #ccc;
+            padding: 4px 8px;
+            text-align: center;
+        }
+
+        #resultsTable button {
+            background: transparent;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: #d9534f;
+        }
+    </style>
+</head>
+<body>
+<h1>Interactive Word Search Builder</h1>
+<label>Grid (rows separated by new lines, letters separated by spaces or tabs):</label>
+<textarea id="gridInput">Q V U C A L I L E N I N E T E E N B M A
+C R E T E H T R E A O U C S I F E V L E
+O R O U N D H N I M I H S T O L I A R O
+U H T R O N R O E O C E H S R A R D W O
+N O U B T D E L O E L T L N T R E T A W
+T E T A T S E O N Y N E O A O L I N E O
+P M U E H T T S E W O D A H R E E R E T
+E O N S K A E P T O O O I L P A S I E C
+L E S D B N O O R A O O E V L E W T S R
+E N T U F I V E T N T N C O I U J T S O
+V R N I E M A K L A W E S C O D T R I D
+E A D T T E Y O S S Q U A R E E E R H T
+N M T O P L E C E O H E T Q U A R R Y O
+N S I O S M I X Z F D Q B C C A S L I Y
+A P S O R E Z N G Q Z P S A P P H I R E</textarea>
+<br>
+<button id="loadBtn">Load Grid</button>
+<button id="clearBtn">Clear All</button>
+<button id="undoBtn">Undo</button>
+
+<div id="gridContainer" class="table-wrapper"></div>
+
+<table id="resultsTable">
+    <thead>
+    <tr>
+        <th>Word</th>
+        <th>Start&nbsp;(row,col)</th>
+        <th>Direction</th>
+        <th></th>
+    </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<script>
+    /**************** Utility helpers ****************/
+    function parseGrid(text) {
+        return text.trim().split(/[\r\n]+/).map(line => line.trim().split(/\s+/).filter(Boolean));
+    }
+
+    function inBounds(r, c, R, C) {
+        return r >= 0 && c >= 0 && r < R && c < C;
+    }
+
+    function dirName(dr, dc) {
+        const map = {
+            "0,1": "→",
+            "0,-1": "←",
+            "1,0": "↓",
+            "-1,0": "↑",
+            "1,1": "↘",
+            "-1,-1": "↖",
+            "1,-1": "↙",
+            "-1,1": "↗"
+        };
+        return map[`${dr},${dc}`] || "";
+    }
+
+    function orientationClass(dr, dc) {
+        // Determine if selection is right-to-left or bottom-to-top
+        const isRightToLeft = dc < 0;
+        const isBottomToTop = dr < 0;
+
+        // For horizontal selections
+        if (dr === 0) {
+            return isRightToLeft ? 'horiz-rtl' : 'horiz';
+        }
+        // For vertical selections
+        else if (dc === 0) {
+            return isBottomToTop ? 'vert-rtl' : 'vert';
+        }
+        // For diagonal selections
+        else {
+            // If either right-to-left or bottom-to-top (but not both), use rtl class
+            // This ensures diagonal selections have consistent highlighting based on direction
+            return (isRightToLeft || isBottomToTop) && !(isRightToLeft && isBottomToTop) ? 'diag-rtl' : 'diag';
+        }
+    }
+
+    function encodeState(state) {
+        return btoa(encodeURIComponent(JSON.stringify(state)));
+    }
+
+    function decodeState(str) {
+        try {
+            return JSON.parse(decodeURIComponent(atob(str)));
+        } catch {
+            return null;
+        }
+    }
+
+    /**************** State ****************/
+    let grid = [], selections = []; // selections: {word,start:[r,c],dir:[dr,dc],path:[{rr,cc}]}
+    let isMouseDown = false, startCell = null, tempPath = [];
+    const gridContainer = document.getElementById('gridContainer');
+    const tbody = document.querySelector('#resultsTable tbody');
+
+    /**************** Grid construction ****************/
+    function buildGridTable() {
+        gridContainer.innerHTML = '';
+        const tbl = document.createElement('table');
+        tbl.className = 'grid';
+        grid.forEach((row, r) => {
+            const tr = document.createElement('tr');
+            row.forEach((ch, c) => {
+                const td = document.createElement('td');
+                td.textContent = ch;
+                td.dataset.r = r;
+                td.dataset.c = c;
+                // pointer events
+                td.addEventListener('mousedown', handleDown);
+                td.addEventListener('mouseenter', handleEnter);
+                td.addEventListener('mouseup', handleUp);
+                tr.appendChild(td);
+            });
+            tbl.appendChild(tr);
+        });
+        gridContainer.appendChild(tbl);
+        // global mouseup to cancel drag outside table
+        document.addEventListener('mouseup', () => {
+            if (isMouseDown) {
+                resetTemp();
+                isMouseDown = false;
+            }
+        });
+    }
+
+    /**************** Drag handlers ****************/
+    function handleDown(e) {
+        resetTemp();
+        isMouseDown = true;
+        const td = e.currentTarget;
+        startCell = {r: +td.dataset.r, c: +td.dataset.c};
+        td.classList.add('temp');
+    }
+
+    function handleEnter(e) {
+        if (!isMouseDown || !startCell) return;
+        const td = e.currentTarget;
+        const end = {r: +td.dataset.r, c: +td.dataset.c};
+        const dr = Math.sign(end.r - startCell.r), dc = Math.sign(end.c - startCell.c);
+        if (dr === 0 && dc === 0) {
+            highlightTemp([startCell]);
+            return;
+        }
+        // ensure straight line
+        if (!(dr === 0 || dc === 0 || Math.abs(dr) === Math.abs(dc))) return; // not straight or perfect diag
+        let rr = startCell.r, cc = startCell.c, path = [];
+        while (true) {
+            path.push({rr, cc});
+            if (rr === end.r && cc === end.c) break;
+            rr += dr;
+            cc += dc;
+            if (!inBounds(rr, cc, grid.length, grid[0].length)) {
+                path = [];
+                break;
+            }
+        }
+        highlightTemp(path);
+    }
+
+    function handleUp(e) {
+        if (!isMouseDown || !startCell) return;
+        const td = e.currentTarget;
+        const end = {r: +td.dataset.r, c: +td.dataset.c};
+        const dr = Math.sign(end.r - startCell.r), dc = Math.sign(end.c - startCell.c);
+        if (dr === 0 && dc === 0) {
+            resetTemp();
+            isMouseDown = false;
+            return;
+        }
+        if (!(dr === 0 || dc === 0 || Math.abs(dr) === Math.abs(dc))) {
+            resetTemp();
+            isMouseDown = false;
+            return;
+        } // not allowed direction
+        let rr = startCell.r, cc = startCell.c, path = [];
+        while (true) {
+            path.push({rr, cc});
+            if (rr === end.r && cc === end.c) break;
+            rr += dr;
+            cc += dc;
+            if (!inBounds(rr, cc, grid.length, grid[0].length)) {
+                resetTemp();
+                isMouseDown = false;
+                return;
+            }
+        }
+        const word = path.map(p => grid[p.rr][p.cc]).join('');
+        addSelection(word, startCell, dr, dc, path);
+        resetTemp();
+        isMouseDown = false;
+        updateURL();
+    }
+
+    function highlightTemp(path) {
+        document.querySelectorAll('.temp').forEach(el => el.classList.remove('temp'));
+        path.forEach(p => document.querySelector(`[data-r="${p.rr}"][data-c="${p.cc}"]`).classList.add('temp'));
+        tempPath = path;
+    }
+
+    function resetTemp() {
+        document.querySelectorAll('.temp').forEach(el => el.classList.remove('temp'));
+        tempPath = [];
+        startCell = null;
+    }
+
+    /**************** Selection helpers ****************/
+    function highlightPath(path, ori) {
+        path.forEach(p => document.querySelector(`[data-r="${p.rr}"][data-c="${p.cc}"]`).classList.add(ori));
+    }
+
+    function clearAllHighlights() {
+        document.querySelectorAll('.horiz, .horiz-rtl, .vert, .vert-rtl, .diag, .diag-rtl').forEach(
+            el => el.classList.remove('horiz', 'horiz-rtl', 'vert', 'vert-rtl', 'diag', 'diag-rtl')
+        );
+    }
+
+    function redrawHighlights() {
+        clearAllHighlights();
+        selections.forEach(sel => highlightPath(sel.path, orientationClass(...sel.dir)));
+    }
+
+    function addSelection(word, start, dr, dc, path) {
+        const sel = {word, start: [start.r, start.c], dir: [dr, dc], path};
+        selections.push(sel);
+        highlightPath(path, orientationClass(dr, dc));
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${word}</td><td>${start.r + 1},${start.c + 1}</td><td>${dirName(dr, dc)}</td><td><button title="Delete">✕</button></td>`;
+        tr.querySelector('button').addEventListener('click', () => {
+            selections = selections.filter(s => s !== sel);
+            tr.remove();
+            redrawHighlights();
+            updateURL();
+        });
+        tbody.appendChild(tr);
+    }
+
+    /**************** Buttons ****************/
+    function loadGrid() {
+        grid = parseGrid(document.getElementById('gridInput').value);
+        selections = [];
+        tbody.innerHTML = '';
+        buildGridTable();
+        updateURL();
+    }
+
+    function clearEverything() {
+        selections = [];
+        tbody.innerHTML = '';
+        redrawHighlights();
+        updateURL();
+    }
+
+    function undo() {
+        if (!selections.length) return;
+        selections.pop();
+        tbody.lastChild.remove();
+        redrawHighlights();
+        updateURL();
+    }
+
+    /**************** URL (de)serialization ****************/
+    function updateURL() {
+        const state = {
+            gridText: document.getElementById('gridInput').value,
+            selections: selections.map(s => ({word: s.word, start: s.start, dir: s.dir}))
+        };
+        location.hash = encodeState(state);
+    }
+
+    function restoreFromURL() {
+        if (location.hash.length > 1) {
+            const state = decodeState(location.hash.slice(1));
+            if (state && state.gridText) {
+                document.getElementById('gridInput').value = state.gridText;
+                loadGrid();
+                // reapply stored selections
+                state.selections.forEach(s => {
+                    const [dr, dc] = s.dir;
+                    let rr = s.start[0], cc = s.start[1], path = [];
+                    for (let k = 0; k < s.word.length; k++) {
+                        path.push({rr, cc});
+                        rr += dr;
+                        cc += dc;
+                    }
+                    addSelection(s.word, {r: s.start[0], c: s.start[1]}, dr, dc, path);
+                });
+            }
+        } else {
+            loadGrid();
+        }
+    }
+
+    /**************** Init ****************/
+    window.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('loadBtn').addEventListener('click', loadGrid);
+        document.getElementById('clearBtn').addEventListener('click', clearEverything);
+        document.getElementById('undoBtn').addEventListener('click', undo);
+        restoreFromURL();
+    });
+</script>
+</body>
+</html>
