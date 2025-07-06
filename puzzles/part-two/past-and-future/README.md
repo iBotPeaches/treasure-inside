@@ -4,6 +4,7 @@ _Part Two (Chapter XXVI)._
 
 ### Thoughts
 * The most direct puzzle (in my 2c) - here is a word search & crytogram & go.
+* "You may ignore all three letter words and some proper nouns."
 
 ### Word Search
 
