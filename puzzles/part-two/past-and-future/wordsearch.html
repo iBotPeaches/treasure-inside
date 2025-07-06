@@ -102,6 +102,20 @@
             cursor: pointer;
             color: #d9534f;
         }
+
+        /* Unhighlighted text display */
+        #unhighlightedTextContainer {
+            margin-top: 1rem;
+            display: none;
+        }
+
+        #unhighlightedTextArea {
+            width: 100%;
+            height: 100px;
+            margin-top: 0.5rem;
+            font-family: monospace;
+            padding: 0.5rem;
+        }
     </style>
 </head>
 <body>
@@ -126,6 +140,7 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
 <button id="loadBtn">Load Grid</button>
 <button id="clearBtn">Clear All</button>
 <button id="undoBtn">Undo</button>
+<button id="extractBtn">Extract Unhighlighted Text</button>
 
 <div id="gridContainer" class="table-wrapper"></div>
 
@@ -140,6 +155,11 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
     </thead>
     <tbody></tbody>
 </table>
+
+<div id="unhighlightedTextContainer">
+    <h3>Unhighlighted Text</h3>
+    <textarea id="unhighlightedTextArea" readonly></textarea>
+</div>
 
 <script>
     /**************** Utility helpers ****************/
@@ -374,6 +394,32 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
         updateURL();
     }
 
+    function extractUnhighlightedText() {
+        // Create a set of all highlighted cell coordinates
+        const highlightedCells = new Set();
+        selections.forEach(sel => {
+            sel.path.forEach(p => {
+                highlightedCells.add(`${p.rr},${p.cc}`);
+            });
+        });
+
+        // Extract text from unhighlighted cells
+        let unhighlightedText = '';
+        grid.forEach((row, r) => {
+            row.forEach((ch, c) => {
+                if (!highlightedCells.has(`${r},${c}`)) {
+                    unhighlightedText += ch;
+                }
+            });
+        });
+
+        // Display the extracted text in the textarea
+        const container = document.getElementById('unhighlightedTextContainer');
+        const textarea = document.getElementById('unhighlightedTextArea');
+        textarea.value = unhighlightedText;
+        container.style.display = 'block';
+    }
+
     /**************** URL (de)serialization ****************/
     function updateURL() {
         const state = {
@@ -411,6 +457,7 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
         document.getElementById('loadBtn').addEventListener('click', loadGrid);
         document.getElementById('clearBtn').addEventListener('click', clearEverything);
         document.getElementById('undoBtn').addEventListener('click', undo);
+        document.getElementById('extractBtn').addEventListener('click', extractUnhighlightedText);
         restoreFromURL();
     });
 </script>
