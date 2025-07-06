@@ -62,6 +62,21 @@ Rl'p cyqxh, iexh, ry jxldxxy
 
 [Quip quip](https://quipqiup.com/) automation can solve this instantly.
 
+| Cipher | Plain | Shift   | Cipher | Plain | Shift   |
+|--------|-------|---------|--------|-------|---------|
+| a      | l     | **+11** | n      | y     | **+11** |
+| b      | g     | **+5**  | o      | h     | **+19** |
+| c      | u     | **+18** | p      | s     | **+3**  |
+| d      | w     | **+19** | q      | d     | **+13** |
+| e      | v     | **+17** | r      | i     | **+17** |
+| h      | r     | **+10** | s      | m     | **+20** |
+| i      | o     | **+6**  | t      | f     | **+12** |
+| j      | b     | **+18** | u      | c     | **+8**  |
+| l      | t     | **+8**  | v      | a     | **+5**  |
+| m      | p     | **+3**  | x      | e     | **+7**  |
+| y      | w     | **+15** | z      | k     | **+11** |
+
+
 > From rock to field from strong to stream
 > past tree and posts to forest green, 
 > arrive you now where beauty sheens.
