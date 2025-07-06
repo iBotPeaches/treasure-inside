@@ -53,6 +53,7 @@
            BOTTOM-TO-TOP: Purple (#ac92ec)
            STANDARD DIAGONAL: Red (#ed5565)
            REVERSE DIAGONAL: Orange (#fc6e51)
+           ANAGRAM: Teal (#1abc9c)
         */
         .horiz {
             background: #a0d468; /* Green for left-to-right */
@@ -76,6 +77,10 @@
 
         .diag-rtl {
             background: #fc6e51; /* Orange for reverse diagonal */
+        }
+
+        .anagram {
+            background: #1abc9c; /* Teal for anagram highlights */
         }
 
         .temp {
@@ -141,6 +146,8 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
 <button id="clearBtn">Clear All</button>
 <button id="undoBtn">Undo</button>
 <button id="extractBtn">Extract Unhighlighted Text</button>
+<button id="anagramModeBtn">Anagram Mode: Off</button>
+<button id="clearAnagramBtn">Clear Anagrams</button>
 
 <div id="gridContainer" class="table-wrapper"></div>
 
@@ -226,6 +233,8 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
     /**************** State ****************/
     let grid = [], selections = []; // selections: {word,start:[r,c],dir:[dr,dc],path:[{rr,cc}]}
     let isMouseDown = false, startCell = null, tempPath = [];
+    let isAnagramMode = false; // Track whether anagram mode is active
+    let anagramCells = new Set(); // Store coordinates of cells marked as anagrams
     const gridContainer = document.getElementById('gridContainer');
     const tbody = document.querySelector('#resultsTable tbody');
 
@@ -299,6 +308,15 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
         const end = {r: +td.dataset.r, c: +td.dataset.c};
         const dr = Math.sign(end.r - startCell.r), dc = Math.sign(end.c - startCell.c);
         if (dr === 0 && dc === 0) {
+            // Allow single character selection in anagram mode
+            if (isAnagramMode) {
+                const path = [{rr: startCell.r, cc: startCell.c}];
+                markAnagram(path);
+                resetTemp();
+                isMouseDown = false;
+                updateURL();
+                return;
+            }
             resetTemp();
             isMouseDown = false;
             return;
@@ -321,7 +339,14 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
             }
         }
         const word = path.map(p => grid[p.rr][p.cc]).join('');
-        addSelection(word, startCell, dr, dc, path);
+
+        // If in anagram mode, mark cells as anagrams instead of adding to selections
+        if (isAnagramMode) {
+            markAnagram(path);
+        } else {
+            addSelection(word, startCell, dr, dc, path);
+        }
+
         resetTemp();
         isMouseDown = false;
         updateURL();
@@ -344,10 +369,23 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
         path.forEach(p => document.querySelector(`[data-r="${p.rr}"][data-c="${p.cc}"]`).classList.add(ori));
     }
 
+    function markAnagram(path) {
+        path.forEach(p => {
+            const cell = document.querySelector(`[data-r="${p.rr}"][data-c="${p.cc}"]`);
+            cell.classList.add('anagram');
+            anagramCells.add(`${p.rr},${p.cc}`);
+        });
+    }
+
     function clearAllHighlights() {
         document.querySelectorAll('.horiz, .horiz-rtl, .vert, .vert-rtl, .diag, .diag-rtl').forEach(
             el => el.classList.remove('horiz', 'horiz-rtl', 'vert', 'vert-rtl', 'diag', 'diag-rtl')
         );
+    }
+
+    function clearAnagramHighlights() {
+        document.querySelectorAll('.anagram').forEach(el => el.classList.remove('anagram'));
+        anagramCells.clear();
     }
 
     function redrawHighlights() {
@@ -374,6 +412,7 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
     function loadGrid() {
         grid = parseGrid(document.getElementById('gridInput').value);
         selections = [];
+        anagramCells.clear();
         tbody.innerHTML = '';
         buildGridTable();
         updateURL();
@@ -383,6 +422,7 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
         selections = [];
         tbody.innerHTML = '';
         redrawHighlights();
+        clearAnagramHighlights();
         updateURL();
     }
 
@@ -394,13 +434,28 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
         updateURL();
     }
 
+    function toggleAnagramMode() {
+        isAnagramMode = !isAnagramMode;
+        const btn = document.getElementById('anagramModeBtn');
+        btn.textContent = `Anagram Mode: ${isAnagramMode ? 'On' : 'Off'}`;
+        btn.style.backgroundColor = isAnagramMode ? '#1abc9c' : '';
+        btn.style.color = isAnagramMode ? 'white' : '';
+    }
+
     function extractUnhighlightedText() {
         // Create a set of all highlighted cell coordinates
         const highlightedCells = new Set();
+
+        // Add cells from word selections
         selections.forEach(sel => {
             sel.path.forEach(p => {
                 highlightedCells.add(`${p.rr},${p.cc}`);
             });
+        });
+
+        // Add cells marked as anagrams
+        anagramCells.forEach(coord => {
+            highlightedCells.add(coord);
         });
 
         // Extract text from unhighlighted cells
@@ -458,6 +513,8 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
         document.getElementById('clearBtn').addEventListener('click', clearEverything);
         document.getElementById('undoBtn').addEventListener('click', undo);
         document.getElementById('extractBtn').addEventListener('click', extractUnhighlightedText);
+        document.getElementById('anagramModeBtn').addEventListener('click', toggleAnagramMode);
+        document.getElementById('clearAnagramBtn').addEventListener('click', clearAnagramHighlights);
         restoreFromURL();
     });
 </script>
