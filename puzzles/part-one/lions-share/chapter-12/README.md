@@ -2,4 +2,4 @@
 _Make Good Choices_
 
 ### Thoughts
-
+1. Led to building the transcontinental railroad.
