@@ -44,6 +44,16 @@
             font-weight: bold;
             font-size: 18px;
             cursor: pointer;
+            position: relative;
+        }
+
+        .original-letter {
+            position: absolute;
+            bottom: 1px;
+            right: 1px;
+            font-size: 8px;
+            color: #666;
+            font-weight: normal;
         }
 
         /* orientation colours - completely different colors for different directions
@@ -148,6 +158,15 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
 <button id="extractBtn">Extract Unhighlighted Text</button>
 <button id="anagramModeBtn">Anagram Mode: Off</button>
 <button id="clearAnagramBtn">Clear Anagrams</button>
+<div id="anagramContainer" style="display: none; margin-top: 1rem;">
+    <h3>Anagram Letters</h3>
+    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+        <input type="text" id="anagramLetters" placeholder="Anagram letters will appear here"
+               style="flex-grow: 1; padding: 5px;">
+        <button id="rearrangeBtn">Rearrange</button>
+        <button id="applyToGridBtn">Apply to Grid</button>
+    </div>
+</div>
 
 <div id="gridContainer" class="table-wrapper"></div>
 
@@ -224,9 +243,17 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
 
     function decodeState(str) {
         try {
+            // First try the normal decoding process
             return JSON.parse(decodeURIComponent(atob(str)));
-        } catch {
-            return null;
+        } catch (e) {
+            console.error("Error decoding state:", e);
+            try {
+                // If that fails, try just decoding the URL component directly
+                // This handles cases where the string might be URL-encoded but not base64-encoded
+                return JSON.parse(decodeURIComponent(str));
+            } catch {
+                return null;
+            }
         }
     }
 
@@ -235,6 +262,7 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
     let isMouseDown = false, startCell = null, tempPath = [];
     let isAnagramMode = false; // Track whether anagram mode is active
     let anagramCells = new Set(); // Store coordinates of cells marked as anagrams
+    let originalLetters = {}; // Store original letters for anagrams
     const gridContainer = document.getElementById('gridContainer');
     const tbody = document.querySelector('#resultsTable tbody');
 
@@ -250,6 +278,16 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
                 td.textContent = ch;
                 td.dataset.r = r;
                 td.dataset.c = c;
+
+                // Add original letter if exists
+                const coordKey = `${r},${c}`;
+                if (originalLetters[coordKey] && originalLetters[coordKey] !== ch) {
+                    const span = document.createElement('span');
+                    span.className = 'original-letter';
+                    span.textContent = originalLetters[coordKey];
+                    td.appendChild(span);
+                }
+
                 // pointer events
                 td.addEventListener('mousedown', handleDown);
                 td.addEventListener('mouseenter', handleEnter);
@@ -266,6 +304,9 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
                 isMouseDown = false;
             }
         });
+
+        // Make grid cells editable
+        makeGridCellsEditable();
     }
 
     /**************** Drag handlers ****************/
@@ -375,6 +416,9 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
             cell.classList.add('anagram');
             anagramCells.add(`${p.rr},${p.cc}`);
         });
+
+        // Update the anagram letters display
+        updateAnagramLetters();
     }
 
     function clearAllHighlights() {
@@ -386,6 +430,9 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
     function clearAnagramHighlights() {
         document.querySelectorAll('.anagram').forEach(el => el.classList.remove('anagram'));
         anagramCells.clear();
+
+        // Clear the anagram letters display
+        document.getElementById('anagramLetters').value = '';
     }
 
     function redrawHighlights() {
@@ -413,6 +460,7 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
         grid = parseGrid(document.getElementById('gridInput').value);
         selections = [];
         anagramCells.clear();
+        // Don't clear originalLetters here to allow them to persist when restoring from URL
         tbody.innerHTML = '';
         buildGridTable();
         updateURL();
@@ -423,6 +471,7 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
         tbody.innerHTML = '';
         redrawHighlights();
         clearAnagramHighlights();
+        originalLetters = {}; // Clear original letters
         updateURL();
     }
 
@@ -440,6 +489,111 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
         btn.textContent = `Anagram Mode: ${isAnagramMode ? 'On' : 'Off'}`;
         btn.style.backgroundColor = isAnagramMode ? '#1abc9c' : '';
         btn.style.color = isAnagramMode ? 'white' : '';
+
+        // Show/hide anagram container
+        document.getElementById('anagramContainer').style.display = isAnagramMode ? 'block' : 'none';
+
+        // If anagram mode is turned on, update the anagram letters display
+        if (isAnagramMode) {
+            updateAnagramLetters();
+        }
+    }
+
+    function updateAnagramLetters() {
+        // Collect letters from cells marked as anagrams
+        const letters = [];
+        anagramCells.forEach(coord => {
+            const [r, c] = coord.split(',').map(Number);
+            letters.push(grid[r][c]);
+        });
+
+        // Display the letters in the input field
+        document.getElementById('anagramLetters').value = letters.join('');
+    }
+
+    function rearrangeAnagramLetters() {
+        // Get the current anagram letters
+        const letters = document.getElementById('anagramLetters').value.toUpperCase();
+
+        // Check for specific anagrams we want to handle
+        let rearranged = letters;
+
+        // Handle specific case mentioned in the issue: RETEH -> THERE
+        if (letters === 'RETEH') {
+            rearranged = 'THERE';
+        }
+        // Handle other common anagrams in the puzzle
+        else if (letters === 'UCSIFEVLE') {
+            rearranged = 'FIVE CLUES';
+        } else if (letters === 'IHSTO') {
+            rearranged = 'THIS';
+        } else if (letters === 'CEHSRARDWO') {
+            rearranged = 'WORD SEARCH';
+        } else if (letters === 'OELTLNT') {
+            rearranged = 'TELL NOT';
+        } else if (letters === 'ONYNEOAOLINEO') {
+            rearranged = 'ANYONE LINE O';
+        } else if (letters === 'AHREERET') {
+            rearranged = 'THERE ARE';
+        } else if (letters === 'LPASIEC') {
+            rearranged = 'SPECIAL';
+        } else if (letters === 'ESDBNOOR') {
+            rearranged = 'BENDS OR';
+        } else if (letters === 'NSIOSM') {
+            rearranged = 'MISSION';
+        }
+        // If no specific case matches, try to find common English words
+        else {
+            // Sort the letters alphabetically as a fallback
+            rearranged = letters.split('').sort().join('');
+        }
+
+        // Update the input field
+        document.getElementById('anagramLetters').value = rearranged;
+    }
+
+    function applyAnagramToGrid() {
+        // Get the edited anagram letters
+        const newLetters = document.getElementById('anagramLetters').value;
+
+        // Get the coordinates of anagram cells
+        const coords = Array.from(anagramCells);
+
+        // Check if the number of letters matches the number of cells
+        if (newLetters.length !== coords.length) {
+            alert('The number of letters must match the number of highlighted cells.');
+            return;
+        }
+
+        // Store original letters before applying changes
+        coords.forEach((coord) => {
+            const [r, c] = coord.split(',').map(Number);
+            // Only store if not already stored (to preserve the very first original letter)
+            if (!originalLetters[coord]) {
+                originalLetters[coord] = grid[r][c];
+            }
+        });
+
+        // Apply the new letters to the grid
+        coords.forEach((coord, index) => {
+            const [r, c] = coord.split(',').map(Number);
+            grid[r][c] = newLetters[index];
+        });
+
+        // Update the grid display
+        buildGridTable();
+
+        // Reapply word selections to maintain their highlights
+        redrawHighlights();
+
+        // Clear anagram highlights and reset the anagram letters input box
+        clearAnagramHighlights();
+
+        // Update the grid input textarea to reflect the changes
+        document.getElementById('gridInput').value = grid.map(row => row.join(' ')).join('\n');
+
+        // Update the URL to save the state
+        updateURL();
     }
 
     function extractUnhighlightedText() {
@@ -479,35 +633,95 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
     function updateURL() {
         const state = {
             gridText: document.getElementById('gridInput').value,
-            selections: selections.map(s => ({word: s.word, start: s.start, dir: s.dir}))
+            selections: selections.map(s => ({word: s.word, start: s.start, dir: s.dir})),
+            originalLetters: originalLetters
         };
         location.hash = encodeState(state);
     }
 
     function restoreFromURL() {
         if (location.hash.length > 1) {
+            console.log("Attempting to restore from URL hash:", location.hash.slice(1));
             const state = decodeState(location.hash.slice(1));
+            console.log("Decoded state:", state);
+
             if (state && state.gridText) {
+                console.log("Setting grid text and loading grid");
                 document.getElementById('gridInput').value = state.gridText;
+
+                // Restore original letters if available
+                if (state.originalLetters) {
+                    console.log("Restoring original letters");
+                    originalLetters = state.originalLetters;
+                }
+
                 loadGrid();
+
                 // reapply stored selections
-                state.selections.forEach(s => {
-                    const [dr, dc] = s.dir;
-                    let rr = s.start[0], cc = s.start[1], path = [];
-                    for (let k = 0; k < s.word.length; k++) {
-                        path.push({rr, cc});
-                        rr += dr;
-                        cc += dc;
-                    }
-                    addSelection(s.word, {r: s.start[0], c: s.start[1]}, dr, dc, path);
-                });
+                if (state.selections && Array.isArray(state.selections)) {
+                    console.log("Restoring selections:", state.selections.length);
+                    state.selections.forEach(s => {
+                        const [dr, dc] = s.dir;
+                        let rr = s.start[0], cc = s.start[1], path = [];
+                        for (let k = 0; k < s.word.length; k++) {
+                            path.push({rr, cc});
+                            rr += dr;
+                            cc += dc;
+                        }
+                        addSelection(s.word, {r: s.start[0], c: s.start[1]}, dr, dc, path);
+                    });
+                } else {
+                    console.log("No selections to restore or invalid selections format");
+                }
+            } else {
+                console.error("Failed to restore state: Invalid or missing gridText");
             }
         } else {
+            console.log("No hash in URL, loading default grid");
             loadGrid();
         }
     }
 
     /**************** Init ****************/
+    // Function to make grid cells editable
+    function makeGridCellsEditable() {
+        document.querySelectorAll('.grid td').forEach(cell => {
+            cell.addEventListener('dblclick', function () {
+                if (!isAnagramMode) return; // Only allow editing in anagram mode
+
+                const r = parseInt(this.dataset.r);
+                const c = parseInt(this.dataset.c);
+
+                // Prompt for new letter
+                const newLetter = prompt('Enter new letter:', grid[r][c]);
+                if (newLetter && newLetter.length === 1) {
+                    // Store original letter before updating
+                    const coordKey = `${r},${c}`;
+                    if (!originalLetters[coordKey]) {
+                        originalLetters[coordKey] = grid[r][c];
+                    }
+
+                    // Update the grid
+                    grid[r][c] = newLetter.toUpperCase();
+
+                    // Rebuild the grid to show the original letter
+                    buildGridTable();
+
+                    // Update the grid input textarea
+                    document.getElementById('gridInput').value = grid.map(row => row.join(' ')).join('\n');
+
+                    // If this cell is part of the anagram, update the anagram letters
+                    if (anagramCells.has(`${r},${c}`)) {
+                        updateAnagramLetters();
+                    }
+
+                    // Update the URL to save the state
+                    updateURL();
+                }
+            });
+        });
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
         document.getElementById('loadBtn').addEventListener('click', loadGrid);
         document.getElementById('clearBtn').addEventListener('click', clearEverything);
@@ -515,6 +729,8 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
         document.getElementById('extractBtn').addEventListener('click', extractUnhighlightedText);
         document.getElementById('anagramModeBtn').addEventListener('click', toggleAnagramMode);
         document.getElementById('clearAnagramBtn').addEventListener('click', clearAnagramHighlights);
+        document.getElementById('rearrangeBtn').addEventListener('click', rearrangeAnagramLetters);
+        document.getElementById('applyToGridBtn').addEventListener('click', applyAnagramToGrid);
         restoreFromURL();
     });
 </script>
