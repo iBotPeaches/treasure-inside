@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Interactive Word Search Builder</title>
+    <title>Interactive Word Search</title>
     <style>
         body {
             font-family: sans-serif;
@@ -134,25 +134,8 @@
     </style>
 </head>
 <body>
-<h1>Interactive Word Search Builder</h1>
-<label>Grid (rows separated by new lines, letters separated by spaces or tabs):</label>
-<textarea id="gridInput">Q V U C A L I L E N I N E T E E N B M A
-C R E T E H T R E A O U C S I F E V L E
-O R O U N D H N I M I H S T O L I A R O
-U H T R O N R O E O C E H S R A R D W O
-N O U B T D E L O E L T L N T R E T A W
-T E T A T S E O N Y N E O A O L I N E O
-P M U E H T T S E W O D A H R E E R E T
-E O N S K A E P T O O O I L P A S I E C
-L E S D B N O O R A O O E V L E W T S R
-E N T U F I V E T N T N C O I U J T S O
-V R N I E M A K L A W E S C O D T R I D
-E A D T T E Y O S S Q U A R E E E R H T
-N M T O P L E C E O H E T Q U A R R Y O
-N S I O S M I X Z F D Q B C C A S L I Y
-A P S O R E Z N G Q Z P S A P P H I R E</textarea>
-<br>
-<button id="loadBtn">Load Grid</button>
+<h1>Interactive Word Search</h1>
+<h2>Word Search Grid</h2>
 <button id="clearBtn">Clear All</button>
 <button id="undoBtn">Undo</button>
 <button id="extractBtn">Extract Unhighlighted Text</button>
@@ -188,11 +171,6 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
 </div>
 
 <script>
-    /**************** Utility helpers ****************/
-    function parseGrid(text) {
-        return text.trim().split(/[\r\n]+/).map(line => line.trim().split(/\s+/).filter(Boolean));
-    }
-
     function inBounds(r, c, R, C) {
         return r >= 0 && c >= 0 && r < R && c < C;
     }
@@ -258,6 +236,25 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
     }
 
     /**************** State ****************/
+        // Hard-coded grid
+    const HARD_CODED_GRID = [
+            ["Q", "V", "U", "C", "A", "L", "I", "L", "E", "N", "I", "N", "E", "T", "E", "E", "N", "B", "M", "A"],
+            ["C", "R", "E", "T", "E", "H", "T", "R", "E", "A", "O", "U", "C", "S", "I", "F", "E", "V", "L", "E"],
+            ["O", "R", "O", "U", "N", "D", "H", "N", "I", "M", "I", "H", "S", "T", "O", "L", "I", "A", "R", "O"],
+            ["U", "H", "T", "R", "O", "N", "R", "O", "E", "O", "C", "E", "H", "S", "R", "A", "R", "D", "W", "O"],
+            ["N", "O", "U", "B", "T", "D", "E", "L", "O", "E", "L", "T", "L", "N", "T", "R", "E", "T", "A", "W"],
+            ["T", "E", "T", "A", "T", "S", "E", "O", "N", "Y", "N", "E", "O", "A", "O", "L", "I", "N", "E", "O"],
+            ["P", "M", "U", "E", "H", "T", "T", "S", "E", "W", "O", "D", "A", "H", "R", "E", "E", "R", "E", "T"],
+            ["E", "O", "N", "S", "K", "A", "E", "P", "T", "O", "O", "O", "I", "L", "P", "A", "S", "I", "E", "C"],
+            ["L", "E", "S", "D", "B", "N", "O", "O", "R", "A", "O", "O", "E", "V", "L", "E", "W", "T", "S", "R"],
+            ["E", "N", "T", "U", "F", "I", "V", "E", "T", "N", "T", "N", "C", "O", "I", "U", "J", "T", "S", "O"],
+            ["V", "R", "N", "I", "E", "M", "A", "K", "L", "A", "W", "E", "S", "C", "O", "D", "T", "R", "I", "D"],
+            ["E", "A", "D", "T", "T", "E", "Y", "O", "S", "S", "Q", "U", "A", "R", "E", "E", "E", "R", "H", "T"],
+            ["N", "M", "T", "O", "P", "L", "E", "C", "E", "O", "H", "E", "T", "Q", "U", "A", "R", "R", "Y", "O"],
+            ["N", "S", "I", "O", "S", "M", "I", "X", "Z", "F", "D", "Q", "B", "C", "C", "A", "S", "L", "I", "Y"],
+            ["A", "P", "S", "O", "R", "E", "Z", "N", "G", "Q", "Z", "P", "S", "A", "P", "P", "H", "I", "R", "E"]
+        ];
+
     let grid = [], selections = []; // selections: {word,start:[r,c],dir:[dr,dc],path:[{rr,cc}]}
     let isMouseDown = false, startCell = null, tempPath = [];
     let isAnagramMode = false; // Track whether anagram mode is active
@@ -457,7 +454,8 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
 
     /**************** Buttons ****************/
     function loadGrid() {
-        grid = parseGrid(document.getElementById('gridInput').value);
+        // Use the hard-coded grid instead of loading from textarea
+        grid = JSON.parse(JSON.stringify(HARD_CODED_GRID)); // Deep copy to avoid modifying the original
         selections = [];
         anagramCells.clear();
         // Don't clear originalLetters here to allow them to persist when restoring from URL
@@ -524,21 +522,21 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
         }
         // Handle other common anagrams in the puzzle
         else if (letters === 'UCSIFEVLE') {
-            rearranged = 'FIVE CLUES';
+            rearranged = 'FIVECLUES';
         } else if (letters === 'IHSTO') {
             rearranged = 'THIS';
         } else if (letters === 'CEHSRARDWO') {
-            rearranged = 'WORD SEARCH';
+            rearranged = 'WORDSEARCH';
         } else if (letters === 'OELTLNT') {
-            rearranged = 'TELL NOT';
+            rearranged = 'TELLNOT';
         } else if (letters === 'ONYNEOAOLINEO') {
-            rearranged = 'ANYONE LINE O';
+            rearranged = 'ANYONELINEO';
         } else if (letters === 'AHREERET') {
-            rearranged = 'THERE ARE';
+            rearranged = 'THEREARE';
         } else if (letters === 'LPASIEC') {
             rearranged = 'SPECIAL';
         } else if (letters === 'ESDBNOOR') {
-            rearranged = 'BENDS OR';
+            rearranged = 'BENDSOR';
         } else if (letters === 'NSIOSM') {
             rearranged = 'MISSION';
         }
@@ -589,9 +587,6 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
         // Clear anagram highlights and reset the anagram letters input box
         clearAnagramHighlights();
 
-        // Update the grid input textarea to reflect the changes
-        document.getElementById('gridInput').value = grid.map(row => row.join(' ')).join('\n');
-
         // Update the URL to save the state
         updateURL();
     }
@@ -632,7 +627,6 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
     /**************** URL (de)serialization ****************/
     function updateURL() {
         const state = {
-            gridText: document.getElementById('gridInput').value,
             selections: selections.map(s => ({word: s.word, start: s.start, dir: s.dir})),
             originalLetters: originalLetters
         };
@@ -645,9 +639,9 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
             const state = decodeState(location.hash.slice(1));
             console.log("Decoded state:", state);
 
-            if (state && state.gridText) {
-                console.log("Setting grid text and loading grid");
-                document.getElementById('gridInput').value = state.gridText;
+            if (state) {
+                // Load the hard-coded grid
+                grid = JSON.parse(JSON.stringify(HARD_CODED_GRID)); // Deep copy
 
                 // Restore original letters if available
                 if (state.originalLetters) {
@@ -655,7 +649,16 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
                     originalLetters = state.originalLetters;
                 }
 
-                loadGrid();
+                // Apply original letters to the grid
+                for (const coordKey in originalLetters) {
+                    const [r, c] = coordKey.split(',').map(Number);
+                    if (r >= 0 && r < grid.length && c >= 0 && c < grid[0].length) {
+                        // We don't actually change the grid here, just keep track of original letters
+                        // The original letters will be displayed as small text in the cells
+                    }
+                }
+
+                buildGridTable();
 
                 // reapply stored selections
                 if (state.selections && Array.isArray(state.selections)) {
@@ -674,7 +677,8 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
                     console.log("No selections to restore or invalid selections format");
                 }
             } else {
-                console.error("Failed to restore state: Invalid or missing gridText");
+                console.error("Failed to restore state: Invalid state");
+                loadGrid();
             }
         } else {
             console.log("No hash in URL, loading default grid");
@@ -707,9 +711,6 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
                     // Rebuild the grid to show the original letter
                     buildGridTable();
 
-                    // Update the grid input textarea
-                    document.getElementById('gridInput').value = grid.map(row => row.join(' ')).join('\n');
-
                     // If this cell is part of the anagram, update the anagram letters
                     if (anagramCells.has(`${r},${c}`)) {
                         updateAnagramLetters();
@@ -723,7 +724,6 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
     }
 
     window.addEventListener('DOMContentLoaded', () => {
-        document.getElementById('loadBtn').addEventListener('click', loadGrid);
         document.getElementById('clearBtn').addEventListener('click', clearEverything);
         document.getElementById('undoBtn').addEventListener('click', undo);
         document.getElementById('extractBtn').addEventListener('click', extractUnhighlightedText);
@@ -731,6 +731,8 @@ A P S O R E Z N G Q Z P S A P P H I R E</textarea>
         document.getElementById('clearAnagramBtn').addEventListener('click', clearAnagramHighlights);
         document.getElementById('rearrangeBtn').addEventListener('click', rearrangeAnagramLetters);
         document.getElementById('applyToGridBtn').addEventListener('click', applyAnagramToGrid);
+
+        // Try to restore from URL, or load the default grid if no URL hash
         restoreFromURL();
     });
 </script>
