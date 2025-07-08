@@ -1,10 +1,9 @@
 # Past and Future
 _Part Two (Chapter XXVI)._
 
-
 ### Thoughts
-* The most direct puzzle (in my 2c) - here is a word search & crytogram & go.
-* "You may ignore all three letter words and some proper nouns."
+* The most direct puzzle (in my 2c) - here is a word search & cryptogram & go.
+* "You may ignore all three-letter words and some proper nouns."
 
 ### Word Search
 
