@@ -639,7 +639,10 @@
     function updateURL() {
         const state = {
             selections: selections.map(s => ({word: s.word, start: s.start, dir: s.dir})),
-            originalLetters: originalLetters
+            originalLetters: originalLetters,
+            anagramCells: Array.from(anagramCells),
+            originalAnagramLetters: originalAnagramLetters,
+            isAnagramMode: isAnagramMode
         };
         location.hash = encodeState(state);
     }
@@ -686,6 +689,46 @@
                     });
                 } else {
                     console.log("No selections to restore or invalid selections format");
+                }
+
+                // Restore anagram cells if available
+                if (state.anagramCells && Array.isArray(state.anagramCells)) {
+                    console.log("Restoring anagram cells:", state.anagramCells.length);
+                    anagramCells = new Set(state.anagramCells);
+
+                    // Apply anagram highlights to the grid
+                    anagramCells.forEach(coord => {
+                        const cell = document.querySelector(`[data-r="${coord.split(',')[0]}"][data-c="${coord.split(',')[1]}"]`);
+                        if (cell) {
+                            cell.classList.add('anagram');
+                        }
+                    });
+                }
+
+                // Restore original anagram letters if available
+                if (state.originalAnagramLetters) {
+                    console.log("Restoring original anagram letters");
+                    originalAnagramLetters = state.originalAnagramLetters;
+                }
+
+                // Restore anagram mode if available
+                if (state.isAnagramMode !== undefined) {
+                    console.log("Restoring anagram mode:", state.isAnagramMode);
+                    isAnagramMode = state.isAnagramMode;
+
+                    // Update the anagram mode button
+                    const btn = document.getElementById('anagramModeBtn');
+                    btn.textContent = `Anagram Mode: ${isAnagramMode ? 'On' : 'Off'}`;
+                    btn.style.backgroundColor = isAnagramMode ? '#1abc9c' : '';
+                    btn.style.color = isAnagramMode ? 'white' : '';
+
+                    // Show/hide anagram container
+                    document.getElementById('anagramContainer').style.display = isAnagramMode ? 'block' : 'none';
+
+                    // Update the anagram letters input field if in anagram mode
+                    if (isAnagramMode && originalAnagramLetters) {
+                        document.getElementById('anagramLetters').value = originalAnagramLetters;
+                    }
                 }
             } else {
                 console.error("Failed to restore state: Invalid state");
