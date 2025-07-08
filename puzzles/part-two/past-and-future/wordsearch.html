@@ -260,6 +260,7 @@
     let isAnagramMode = false; // Track whether anagram mode is active
     let anagramCells = new Set(); // Store coordinates of cells marked as anagrams
     let originalLetters = {}; // Store original letters for anagrams
+    let originalAnagramLetters = ''; // Store the original anagram letters for validation
     const gridContainer = document.getElementById('gridContainer');
     const tbody = document.querySelector('#resultsTable tbody');
 
@@ -430,6 +431,7 @@
 
         // Clear the anagram letters display
         document.getElementById('anagramLetters').value = '';
+        originalAnagramLetters = '';
     }
 
     function redrawHighlights() {
@@ -505,8 +507,11 @@
             letters.push(grid[r][c]);
         });
 
+        // Store the original anagram letters for validation
+        originalAnagramLetters = letters.join('');
+
         // Display the letters in the input field
-        document.getElementById('anagramLetters').value = letters.join('');
+        document.getElementById('anagramLetters').value = originalAnagramLetters;
     }
 
     function rearrangeAnagramLetters() {
@@ -560,6 +565,12 @@
         // Check if the number of letters matches the number of cells
         if (newLetters.length !== coords.length) {
             alert('The number of letters must match the number of highlighted cells.');
+            return;
+        }
+
+        // Validate that the new letters are a valid permutation of the original letters
+        if (!isValidAnagramInput(newLetters, originalAnagramLetters)) {
+            alert('You can only use the letters that are selected in the grid.');
             return;
         }
 
@@ -687,6 +698,32 @@
     }
 
     /**************** Init ****************/
+    // Function to check if input is a valid permutation of original letters
+    function isValidAnagramInput(input, original) {
+        if (!original) return true; // If no original letters, any input is valid
+
+        // Count occurrences of each letter in original
+        const originalCounts = {};
+        for (const char of original.toUpperCase()) {
+            originalCounts[char] = (originalCounts[char] || 0) + 1;
+        }
+
+        // Count occurrences of each letter in input
+        const inputCounts = {};
+        for (const char of input.toUpperCase()) {
+            inputCounts[char] = (inputCounts[char] || 0) + 1;
+        }
+
+        // Check if input only uses letters from original and doesn't exceed their count
+        for (const char in inputCounts) {
+            if (!originalCounts[char] || inputCounts[char] > originalCounts[char]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     // Function to make grid cells editable
     function makeGridCellsEditable() {
         document.querySelectorAll('.grid td').forEach(cell => {
@@ -731,6 +768,27 @@
         document.getElementById('clearAnagramBtn').addEventListener('click', clearAnagramHighlights);
         document.getElementById('rearrangeBtn').addEventListener('click', rearrangeAnagramLetters);
         document.getElementById('applyToGridBtn').addEventListener('click', applyAnagramToGrid);
+
+        // Add event listener to validate anagram input
+        const anagramInput = document.getElementById('anagramLetters');
+        anagramInput.addEventListener('input', function(e) {
+            const input = e.target.value;
+
+            // If input is not a valid permutation of original letters, revert to last valid input
+            if (!isValidAnagramInput(input, originalAnagramLetters)) {
+                // Find the last valid value by removing the most recently added character
+                let validInput = input.slice(0, -1);
+                while (validInput.length > 0 && !isValidAnagramInput(validInput, originalAnagramLetters)) {
+                    validInput = validInput.slice(0, -1);
+                }
+
+                // Revert to the last valid input
+                e.target.value = validInput;
+
+                // Alert the user
+                alert('You can only use the letters that are selected in the grid.');
+            }
+        });
 
         // Try to restore from URL, or load the default grid if no URL hash
         restoreFromURL();
