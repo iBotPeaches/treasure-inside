@@ -642,7 +642,8 @@
             originalLetters: originalLetters,
             anagramCells: Array.from(anagramCells),
             originalAnagramLetters: originalAnagramLetters,
-            isAnagramMode: isAnagramMode
+            isAnagramMode: isAnagramMode,
+            grid: grid // Save the current grid state
         };
         location.hash = encodeState(state);
     }
@@ -654,8 +655,15 @@
             console.log("Decoded state:", state);
 
             if (state) {
-                // Load the hard-coded grid
-                grid = JSON.parse(JSON.stringify(HARD_CODED_GRID)); // Deep copy
+                // Check if we have a saved grid state
+                if (state.grid) {
+                    console.log("Restoring grid from saved state");
+                    grid = state.grid;
+                } else {
+                    // Fallback to the hard-coded grid if no saved grid
+                    console.log("No saved grid found, using hard-coded grid");
+                    grid = JSON.parse(JSON.stringify(HARD_CODED_GRID)); // Deep copy
+                }
 
                 // Restore original letters if available
                 if (state.originalLetters) {
