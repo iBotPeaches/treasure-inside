@@ -1,6 +1,9 @@
 # Past and Future
 _Part Two (Chapter XXVI)._
 
+## Hints
+- "If you are closer to the over than the under while in between, there are only so many spots where the treasure could be hidden safe from people and nature."
+
 ### Thoughts
 * The most direct puzzle (in my 2c) - here is a word search & cryptogram & go.
 * "You may ignore all three-letter words and some proper nouns."
