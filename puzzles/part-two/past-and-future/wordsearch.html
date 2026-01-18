@@ -468,10 +468,17 @@
 
     function clearEverything() {
         selections = [];
+        grid = JSON.parse(JSON.stringify(HARD_CODED_GRID)); // Reset grid to normal
         tbody.innerHTML = '';
+        buildGridTable(); // Rebuild table to show original letters
         redrawHighlights();
         clearAnagramHighlights();
         originalLetters = {}; // Clear original letters
+        
+        // Also clear unhighlighted text area
+        document.getElementById('unhighlightedTextArea').value = '';
+        document.getElementById('unhighlightedTextContainer').style.display = 'none';
+
         updateURL();
     }
 
